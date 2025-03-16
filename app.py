@@ -9,6 +9,7 @@ st.set_page_config(page_title="Banker's Algorithm Simulator", layout="wide")
 
 # 页面路由
 def main():
+
     if "page" not in st.session_state:
         st.session_state.page = "welcome"
 
@@ -17,7 +18,9 @@ def main():
         "config": page_config,
         "input": page_input,
         "view": page_view,
+        "example": page_sample_init,
         "simulator": page_simulator
+
     }
 
     with st.sidebar:
@@ -29,6 +32,8 @@ def main():
                 st.session_state.page = "config"
             if st.button("📝 输入",use_container_width=True):
                 st.session_state.page = "input"
+            if st.button("📋 示例", use_container_width=True):
+                st.session_state.page = "example"
             if st.button("🔍 审查",use_container_width=True):
                 st.session_state.page = "view"
             if st.button("▶️ 模拟",use_container_width=True):
@@ -39,6 +44,19 @@ def main():
 
 # 欢迎页面
 def page_welcome():
+    # 重置session
+    st.session_state.sys_resource = 0
+    st.session_state.n = 0
+    st.session_state.m = 0
+    st.session_state.max_alloc = 0
+    st.session_state.alloc = 0
+    st.session_state.need = 0
+    st.session_state.reqs = 0
+    st.session_state.current_step = 0
+    st.session_state.available = 0
+    st.session_state.tick = 0
+    st.session_state.safe_seq = 0
+    #
     st.title("银行家算法模拟系统")
     cols = st.columns(2)
     if cols[0].button("随机模拟", use_container_width=True):
@@ -191,6 +209,7 @@ A - 当前可用的资源
 
 # 配置页面
 def page_config():
+
     st.title("系统配置")
 
     if "current_step" not in st.session_state:
@@ -198,6 +217,19 @@ def page_config():
 
     # 步骤1：输入基本参数
     if st.session_state.current_step == 0:
+        # 重置session
+        st.session_state.sys_resource = 0
+        st.session_state.n = 0
+        st.session_state.m = 0
+        st.session_state.max_alloc = 0
+        st.session_state.alloc = 0
+        st.session_state.need = 0
+        st.session_state.reqs = 0
+        st.session_state.current_step = 0
+        st.session_state.available = 0
+        st.session_state.tick = 0
+        st.session_state.safe_seq = 0
+        #
         with st.form("basic_params"):
             cols = st.columns(3)
             n = cols[0].number_input("进程数 (n)", 1, 10, 3)
@@ -292,7 +324,7 @@ def page_config():
                 columns=[f"资源{i}" for i in range(st.session_state.m)],
                 index=["总量"]
             )
-            st.dataframe(sys_df.style.applymap(
+            st.dataframe(sys_df.style.map(
                 lambda x: 'color: blue' if x == min(st.session_state.sys_resource) else 'color: pink' if x == max(
                     st.session_state.sys_resource) else ''))
 
@@ -303,7 +335,7 @@ def page_config():
                 columns=[f"资源{i}" for i in range(st.session_state.m)],
                 index=["可用量"]
             )
-            st.dataframe(avail_df.style.applymap(
+            st.dataframe(avail_df.style.map(
                 lambda x: 'color: blue' if x == min(st.session_state.available) else 'color: pink' if x == max(
                     st.session_state.available) else ''))
 
@@ -318,7 +350,7 @@ def page_config():
                 columns=[f"资源{i}" for i in range(st.session_state.m)],
                 index=[f"进程{i}" for i in range(st.session_state.n)]
             )
-            st.dataframe(max_df.style.applymap(lambda x: 'color: blue' if x == min(
+            st.dataframe(max_df.style.map(lambda x: 'color: blue' if x == min(
                 map(min, st.session_state.max_alloc)) else 'color: pink' if x == max(
                 map(max, st.session_state.max_alloc)) else ''))
 
@@ -329,7 +361,7 @@ def page_config():
                 columns=[f"资源{i}" for i in range(st.session_state.m)],
                 index=[f"进程{i}" for i in range(st.session_state.n)]
             )
-            st.dataframe(alloc_df.style.applymap(
+            st.dataframe(alloc_df.style.map(
                 lambda x: 'color: blue' if x == min(map(min, st.session_state.alloc)) else 'color: pink' if x == max(
                     map(max, st.session_state.alloc)) else ''))
 
@@ -340,7 +372,7 @@ def page_config():
                 columns=[f"资源{i}" for i in range(st.session_state.m)],
                 index=[f"进程{i}" for i in range(st.session_state.n)]
             )
-            st.dataframe(need_df.style.applymap(
+            st.dataframe(need_df.style.map(
                 lambda x: 'color: blue' if x == min(map(min, st.session_state.need)) else 'color: pink' if x == max(
                     map(max, st.session_state.need)) else ''))
 
@@ -364,6 +396,107 @@ def page_config():
         if c2.button("🔄 重新生成", use_container_width=True):
             st.session_state.current_step = 0
             st.rerun()
+
+def page_sample_init():
+    st.title("样例初始化")
+
+    # 样例数据
+    sample_data = {
+        "Allocation": [
+            [0, 0, 1, 4],
+            [1, 4, 3, 2],
+            [1, 3, 5, 4],
+            [1, 0, 0, 0]
+        ],
+        "Max": [
+            [0, 6, 5, 6],
+            [1, 9, 4, 2],
+            [1, 3, 5, 6],
+            [1, 7, 5, 0]
+        ],
+        "Available": [1, 5, 2, 0]
+    }
+
+    # 显示样例数据
+    st.subheader("样例数据")
+    cols = st.columns(3)
+    with cols[0]:
+        st.markdown("**Allocation**")
+        alloc_df = pd.DataFrame(
+            sample_data["Allocation"],
+            columns=["A", "B", "C", "D"],
+            index=[f"P{i+1}" for i in range(len(sample_data["Allocation"]))]
+        )
+        st.dataframe(alloc_df)
+
+    with cols[1]:
+        st.markdown("**Max**")
+        max_df = pd.DataFrame(
+            sample_data["Max"],
+            columns=["A", "B", "C", "D"],
+            index=[f"P{i+1}" for i in range(len(sample_data["Max"]))]
+        )
+        st.dataframe(max_df)
+
+    with cols[2]:
+        st.markdown("**Available**")
+        avail_df = pd.DataFrame(
+            [sample_data["Available"]],
+            columns=["A", "B", "C", "D"],
+            index=["Available"]
+        )
+        st.dataframe(avail_df)
+
+    # 初始化按钮
+    if st.button("🚀 使用样例初始化系统", use_container_width=True):
+        # 计算Need矩阵
+        need = []
+        for i in range(len(sample_data["Allocation"])):
+            row = [
+                sample_data["Max"][i][j] - sample_data["Allocation"][i][j]
+                for j in range(len(sample_data["Available"]))
+            ]
+            need.append(row)
+
+        # 生成请求序列
+        reqs = []
+        need_copy = deepcopy(need)
+        for i in range(len(need_copy)):
+            while sum(need_copy[i]) > 0:
+                req = []
+                for j in range(len(need_copy[i])):
+                    if need_copy[i][j] == 0:
+                        req.append(0)
+                    else:
+                        req.append(random.randint(1, need_copy[i][j]))
+                reqs.append((i, req))
+                for j in range(len(need_copy[i])):
+                    need_copy[i][j] -= req[j]
+
+        random.shuffle(reqs)
+        reqs += [(-1, [0] * len(sample_data["Available"]))] * 5
+
+        # 保存到session_state
+        st.session_state.n = len(sample_data["Allocation"])
+        st.session_state.m = len(sample_data["Available"])
+        st.session_state.sys_resource = [
+            sum(col) for col in zip(*sample_data["Allocation"])
+        ]
+        st.session_state.sys_resource = [
+            st.session_state.sys_resource[i] + sample_data["Available"][i]
+            for i in range(len(sample_data["Available"]))
+        ]
+        st.session_state.max_alloc = sample_data["Max"]
+        st.session_state.alloc = sample_data["Allocation"]
+        st.session_state.need = need
+        st.session_state.reqs = reqs
+        st.session_state.tick = 0
+        st.session_state.available = sample_data["Available"]
+
+        st.success("系统初始化完成！")
+        st.session_state.page = "view"
+        st.rerun()
+
 
 
 # 配置页面
@@ -550,7 +683,7 @@ def page_view():
             columns=[f"资源{i}" for i in range(st.session_state.m)],
             index=["总量"]
         )
-        st.dataframe(sys_df.style.applymap(
+        st.dataframe(sys_df.style.map(
             lambda x: 'color: blue' if x == min(st.session_state.sys_resource) else 'color: pink' if x == max(
                 st.session_state.sys_resource) else ''))
 
@@ -561,7 +694,7 @@ def page_view():
             columns=[f"资源{i}" for i in range(st.session_state.m)],
             index=["可用量"]
         )
-        st.dataframe(avail_df.style.applymap(
+        st.dataframe(avail_df.style.map(
             lambda x: 'color: blue' if x == min(st.session_state.available) else 'color: pink' if x == max(
                 st.session_state.available) else ''))
 #%%
@@ -611,7 +744,47 @@ def page_view():
         st.session_state.page = "config"
         st.rerun()
 
+def calculate_efficiency(system, sequence):
+    """加权资源利用率计算"""
+    total_weight = sum(system["resources"])
+    usage = 0.0
 
+    # 模拟执行过程计算资源利用率
+    work = system["available"].copy()
+    alloc_copy = deepcopy(system["allocation"])
+
+    for client in sequence:
+        # 分配资源
+        for ri in range(len(work)):
+            work[ri] += alloc_copy[client][ri]
+
+        # 计算当前利用率
+        for ri in range(len(work)):
+            used = system["resources"][ri] - work[ri]
+            weight = system["resources"][ri] / total_weight
+            usage += (used / system["resources"][ri]) * weight
+
+    # 平均利用率
+    return usage / len(sequence)
+
+def display_safe_sequences(safe_sequences, system):
+    """展示安全序列及其评分"""
+    if not safe_sequences:
+        st.error("未找到安全序列！")
+        return
+
+    # 计算每个安全序列的评分
+    results = []
+    for seq in safe_sequences:
+        efficiency = calculate_efficiency(system, seq)
+        results.append({
+            "安全序列": " -> ".join([f"P{p}" for p in seq]),
+            "资源利用率": f"{efficiency:.2%}"
+        })
+
+    # 转换为DataFrame
+    df = pd.DataFrame(results)
+    st.dataframe(df, use_container_width=True,)
 # 模拟页面
 def page_simulator():
     st.title("算法模拟")
@@ -634,7 +807,7 @@ def page_simulator():
             columns=[f"资源{i}" for i in range(st.session_state.m)],
             index=["总量"]
         )
-        st.dataframe(sys_df.style.applymap(
+        st.dataframe(sys_df.style.map(
             lambda x: 'color: blue' if x == min(st.session_state.sys_resource) else 'color: pink' if x == max(
                 st.session_state.sys_resource) else ''))
 
@@ -645,7 +818,7 @@ def page_simulator():
             columns=[f"资源{i}" for i in range(st.session_state.m)],
             index=["可用量"]
         )
-        st.dataframe(avail_df.style.applymap(
+        st.dataframe(avail_df.style.map(
             lambda x: 'color: blue' if x == min(st.session_state.available) else 'color: pink' if x == max(
                 st.session_state.available) else ''))
         #%%
@@ -679,7 +852,7 @@ def page_simulator():
 
     with col4:
         pid, req = st.session_state.reqs[st.session_state.tick]
-        reqd={i:r for i,r in zip(range(st.session_state.m),req)}
+        reqd=deepcopy(st.session_state.sys_resource)
         for i in range(st.session_state.m):
             reqd[i]=req[i]
 
@@ -689,7 +862,7 @@ def page_simulator():
             columns=[f"资源{i}" for i in range(st.session_state.m)],
             index=["总量"]
         )
-        st.dataframe(sys_df.style.applymap(
+        st.dataframe(sys_df.style.map(
             lambda x: 'color: blue' if x == min(reqd) else 'color: pink' if x == max(
                 reqd) else ''))
 
@@ -700,9 +873,18 @@ def page_simulator():
     st.session_state.state=any(safe_sequences)
 
     if safe_sequences:
-        st.success(f"找到 {len(safe_sequences)} 个安全序列，计算下一个")
-        for seq in safe_sequences:
-            st.code(" → ".join([f"P{p}" for p in seq]))
+        st.success(f"找到 {len(safe_sequences)} 个安全序列，可计算下一个")
+        # for seq in safe_sequences:
+        #     st.code(" → ".join([f"P{p}" for p in seq]))
+        system = {
+            "resources": deepcopy(st.session_state.sys_resource),  # 系统总资源
+            "available": deepcopy(st.session_state.available),  # 可用资源
+            "allocation": deepcopy(st.session_state.alloc),
+        }
+        # 在Streamlit中展示
+        st.title("安全序列及其评分")
+        display_safe_sequences(safe_sequences, system)
+
     else:
         st.error("当前状态不安全！请跳过该分配请求！")
 
