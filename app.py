@@ -83,7 +83,7 @@ def page_config():
 
         # 生成已分配矩阵，加和小于系统资源
         alloc = []
-        sys_resource_cp = sys_resource.copy()
+        sys_resource_cp = deepcopy(sys_resource)
         for _ in range(st.session_state.n):
             row = [random.randint(0, res) for res in sys_resource_cp]
             sys_resource_cp = [res - r for res, r in zip(sys_resource_cp, row)] # 减去已分配的资源
