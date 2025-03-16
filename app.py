@@ -574,9 +574,9 @@ def page_input():
                 row = []
                 cols = st.columns(st.session_state.m)
                 for j in range(st.session_state.m):
-                    max_val = max_data[i][j]
+                    # max_val = max_data[i][j]
                     row.append(cols[j].number_input(
-                        f"P{i}-R{j}", 0, max_val, 0,
+                        f"P{i}-R{j}",min_value=0,max_value=max_data[i][j],
                         key=f"alloc_{i}_{j}"
                     ))
                 alloc_data.append(row)
