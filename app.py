@@ -27,12 +27,13 @@ def main():
         if "n" in st.session_state:
             if st.button("⚙️ 配置"):
                 st.session_state.page = "config"
+            if st.button("📝 输入"):
+                st.session_state.page = "input"
             if st.button("🔍 审查"):
                 st.session_state.page = "view"
             if st.button("▶️ 模拟"):
                 st.session_state.page = "simulator"
-            if st.button("📝 输入"):
-                st.session_state.page ="input"
+
 
     pages[st.session_state.page]()
 
