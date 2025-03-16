@@ -474,7 +474,7 @@ def page_sample_init():
                     need_copy[i][j] -= req[j]
 
         random.shuffle(reqs)
-        reqs += [(-1, [0] * len(sample_data["Available"]))] * 5
+        # reqs += [(-1, [0] * len(sample_data["Available"]))] * 5
 
         # 保存到session_state
         st.session_state.n = len(sample_data["Allocation"])
