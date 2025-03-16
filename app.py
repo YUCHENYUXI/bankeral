@@ -78,19 +78,22 @@ def page_config():
     # 步骤2：生成系统资源
     if st.session_state.current_step == 1:
         max_resource = 20
-        sys_resource = [random.randint(0, max_resource) + st.session_state.lowest
+        sys_resource = [max(random.randint(0, max_resource) ,st.session_state.lowest)
                         for _ in range(st.session_state.m)]
+
+        # 生成已分配矩阵，加和小于系统资源
+        alloc = []
+        sys_resource_cp = sys_resource.copy()
+        for _ in range(st.session_state.n):
+            row = [random.randint(0, res) for res in sys_resource_cp]
+            sys_resource_cp = [res - r for res, r in zip(sys_resource_cp, row)] # 减去已分配的资源
+            alloc.append(row) # 加入已分配矩阵
+
 
         # 生成最大分配矩阵
         max_alloc = []
-        for _ in range(st.session_state.n):
-            row = [random.randint(0, res) for res in sys_resource]
-            max_alloc.append(row)
-
-        # 生成已分配矩阵
-        alloc = []
         for i in range(st.session_state.n):
-            row = [random.randint(0, max_alloc[i][j]) for j in range(st.session_state.m)]
+            row = [random.randint(alloc[i][j] , sys_resource[j]) for j in range(st.session_state.m)]# 最大分配矩阵大于等于已分配矩阵
             alloc.append(row)
 
         # 计算需求矩阵
