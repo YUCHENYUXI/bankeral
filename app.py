@@ -46,12 +46,12 @@ def page_welcome():
 
     **银行家算法**是操作系统中用于避免死锁的重要算法，本系统通过可视化方式帮助理解其工作原理。
     """)
-
-    if st.button("随机模拟"):
+    cols = st.columns(2)
+    if cols[0].button("随机模拟"):
         st.session_state.page = "config"
         st.rerun()
 
-    if st.button("手动输入"):
+    if cols[1].button("手动输入"):
         st.session_state.page = "page_input"
         st.rerun()
 
@@ -161,107 +161,7 @@ def page_config():
 
 # 配置页面
 def page_input():
-    st.title("手动输入")
-
-    if "current_step" not in st.session_state:
-        st.session_state.current_step = 0
-
-    # 步骤1：输入基本参数
-    if st.session_state.current_step == 0:
-        with st.form("basic_params"):
-            cols = st.columns(3)
-            n = cols[0].number_input("进程数 (n)", 1, 10, 3)
-            m = cols[1].number_input("资源种类数 (m)", 1, 5, 2)
-            lowest = cols[2].number_input("最低资源数", 1, 5, 2)
-
-            if st.form_submit_button("确认"):
-                st.session_state.n = n
-                st.session_state.m = m
-                st.session_state.lowest = lowest
-                st.session_state.current_step = 1
-                st.rerun()
-
-    # 步骤2：生成系统资源
-    if st.session_state.current_step == 1:
-        max_resource = 20
-        sys_resource = [random.randint(0, max_resource) + st.session_state.lowest
-                        for _ in range(st.session_state.m)]
-
-        # 生成最大分配矩阵
-        max_alloc = []
-        for _ in range(st.session_state.n):
-            row = [random.randint(0, res) for res in sys_resource]
-            max_alloc.append(row)
-
-        # 生成已分配矩阵
-        alloc = []
-        for i in range(st.session_state.n):
-            row = [random.randint(0, max_alloc[i][j]) for j in range(st.session_state.m)]
-            alloc.append(row)
-
-        # 计算需求矩阵
-        need = []
-        for i in range(st.session_state.n):
-            row = [max_alloc[i][j] - alloc[i][j] for j in range(st.session_state.m)]
-            need.append(row)
-
-        # 生成请求列表
-        reqs = []
-        need_copy = deepcopy(need)
-        for i in range(st.session_state.n):
-            while sum(need_copy[i]) > 0:
-                req = []
-                for j in range(st.session_state.m):
-                    if need_copy[i][j] == 0:
-                        req.append(0)
-                    else:
-                        req.append(random.randint(1, need_copy[i][j]))
-                reqs.append((i, req))
-                for j in range(st.session_state.m):
-                    need_copy[i][j] -= req[j]
-
-        random.shuffle(reqs)
-        reqs += [(-1, [0] * st.session_state.m)] * 5  # 添加padding
-
-        # 保存到session
-        st.session_state.sys_resource = sys_resource
-        st.session_state.max_alloc = max_alloc
-        st.session_state.alloc = alloc
-        st.session_state.need = need
-        st.session_state.reqs = reqs
-        st.session_state.tick = 0
-        st.session_state.current_step = 2
-        st.rerun()
-
-    # 步骤3：显示配置结果
-    if st.session_state.current_step == 2:
-        st.success("系统初始化完成！")
-
-        # 显示资源分配
-        st.subheader("系统资源分配")
-        cols = st.columns(3)
-        cols[0].subheader("总资源")
-        cols[0].table(st.session_state.sys_resource)
-        cols[1].metric("最大分配矩阵", f"{st.session_state.max_alloc}")
-        cols[2].metric("已分配矩阵", f"{st.session_state.alloc}")
-
-        # 显示请求序列
-        st.subheader("生成的请求序列")
-        req_df = pd.DataFrame(
-            [(i, req[0], req[1]) for i, req in enumerate(st.session_state.reqs)],
-            columns=["Tick", "进程ID", "请求资源"]
-        )
-        st.dataframe(req_df, height=300)
-
-        # 操作按钮
-        c1, c2 = st.columns(2)
-        if c1.button("✅ 确认配置"):
-            st.session_state.page = "view"
-            st.rerun()
-        if c2.button("🔄 重新生成"):
-            st.session_state.current_step = 0
-            st.rerun()
-
+   pass
 
 # 审查页面
 def page_view():
