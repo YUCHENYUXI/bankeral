@@ -6,7 +6,6 @@ from copy import deepcopy
 # 页面配置
 st.set_page_config(page_title="Banker's Algorithm Simulator", layout="wide")
 
-
 # 页面路由
 def main():
     if "page" not in st.session_state:
@@ -37,7 +36,6 @@ def main():
 
     pages[st.session_state.page]()
 
-
 # 欢迎页面
 def page_welcome():
     st.title("银行家算法模拟系统")
@@ -54,7 +52,6 @@ def page_welcome():
     if cols[1].button("手动输入"):
         st.session_state.page = "page_input"
         st.rerun()
-
 
 # 配置页面
 def page_config():
@@ -116,9 +113,12 @@ def page_config():
                 reqs.append((i, req))
                 for j in range(st.session_state.m):
                     need_copy[i][j] -= req[j]
-
         random.shuffle(reqs)
         reqs += [(-1, [0] * st.session_state.m)] * 5  # 添加padding
+
+        # 计算初始可用资源
+        alloc_sum = [sum(col) for col in zip(*alloc)]
+        available = [sys_resource[i] - alloc_sum[i] for i in range(st.session_state.m)]
 
         # 保存到session
         st.session_state.sys_resource = sys_resource
@@ -128,6 +128,7 @@ def page_config():
         st.session_state.reqs = reqs
         st.session_state.tick = 0
         st.session_state.current_step = 2
+        st.session_state.available = available
         st.rerun()
 
     # 步骤3：显示配置结果
@@ -136,11 +137,22 @@ def page_config():
 
         # 显示资源分配
         st.subheader("系统资源分配")
+        resources = st.columns(2)
+        resources[0].subheader("系统资源")
+        resources[0].table(
+            st.session_state.sys_resource
+        )
+        resources[1].subheader("可用资源")
+        resources[1].table(st.session_state.available)
+
         cols = st.columns(3)
         cols[0].subheader("总资源")
         cols[0].table(st.session_state.sys_resource)
-        cols[1].metric("最大分配矩阵", f"{st.session_state.max_alloc}")
-        cols[2].metric("已分配矩阵", f"{st.session_state.alloc}")
+        cols[1].subheader("MAX")
+        cols[1].table(st.session_state.max_alloc)
+        cols[2].subheader("ALLOC")
+        cols[2].table(st.session_state.alloc)
+
 
         # 显示请求序列
         st.subheader("生成的请求序列")
