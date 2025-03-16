@@ -873,7 +873,10 @@ def page_simulator():
     st.session_state.state=any(safe_sequences)
 
     if safe_sequences:
-        st.success(f"找到 {len(safe_sequences)} 个安全序列，可计算下一个")
+        if st.session_state.tick==0:
+            st.success(f"初始状态，找到{len(safe_sequences)} 个安全序列，可计算下一个")
+        else:
+            st.success(f"对tick<{st.session_state.tick}的请求做分配后，找到 {len(safe_sequences)} 个安全序列，可计算下一个")
         # for seq in safe_sequences:
         #     st.code(" → ".join([f"P{p}" for p in seq]))
         system = {
