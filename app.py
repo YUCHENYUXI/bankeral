@@ -1,259 +1,431 @@
 import streamlit as st
-import numpy as np
 import random
+import pandas as pd
 from copy import deepcopy
 
 # 页面配置
 st.set_page_config(page_title="Banker's Algorithm Simulator", layout="wide")
 
-# 初始化session state
-if 'page' not in st.session_state:
-    st.session_state.page = 'Welcome'
-if 'current_step' not in st.session_state:
-    st.session_state.current_step = 0
+
+# 页面路由
+def main():
+    if "page" not in st.session_state:
+        st.session_state.page = "welcome"
+
+    pages = {
+        "welcome": page_welcome,
+        "config": page_config,
+        "input": page_input,
+        "view": page_view,
+        "simulator": page_simulator
+    }
+
+    with st.sidebar:
+        st.header("导航")
+        if st.button("🏠 首页"):
+            st.session_state.page = "welcome"
+        if "n" in st.session_state:
+            if st.button("⚙️ 配置"):
+                st.session_state.page = "config"
+            if st.button("🔍 审查"):
+                st.session_state.page = "view"
+            if st.button("▶️ 模拟"):
+                st.session_state.page = "simulator"
+            if st.button("📝 输入"):
+                st.session_state.page ="input"
+
+    pages[st.session_state.page]()
 
 
-# 工具函数
-def initsysresource(m, maxnum, lowestnum):
-    return [random.randint(0, maxnum) + lowestnum for _ in range(m)]
-
-
-def initmaxalloc(n, m, sysresource):
-    return [[random.randint(0, sysresource[j]) for j in range(m)] for i in range(n)]
-
-
-def initalloc(n, m, maxalloc):
-    return [[random.randint(0, maxalloc[i][j]) for j in range(m)] for i in range(n)]
-
-
-def calneed(maxalloc, alloc):
-    return [[maxalloc[i][j] - alloc[i][j] for j in range(len(maxalloc[0]))] for i in range(len(maxalloc))]
-
-
-def initreqs(n, m, need):
-    reqs = []
-    need_cp = deepcopy(need)
-
-    for i in range(n):
-        while sum(need_cp[i]) > 0:
-            req = [0] * m
-            for j in range(m):
-                if need_cp[i][j] > 0:
-                    req[j] = random.randint(1, need_cp[i][j])
-                    need_cp[i][j] -= req[j]
-                else:
-                    req[j] = 0
-            reqs.append((i, req))
-
-    random.shuffle(reqs)
-    for _ in range(5):  # 添加padding
-        reqs.append((0, [0] * m))
-    return reqs
-
-
-def refreshavailable(n, m, maxresource, alloc):
-    used = [sum(alloc[i][j] for i in range(n)) for j in range(m)]
-    return [maxresource[j] - used[j] for j in range(m)]
-
-
-def is_safe(available, need, alloc):
-    n = len(need)
-    work = available.copy()
-    finish = [False] * n
-    safe_seq = []
-
-    while True:
-        found = False
-        for i in range(n):
-            if not finish[i] and all(need[i][j] <= work[j] for j in range(len(work))):
-                for j in range(len(work)):
-                    work[j] += alloc[i][j]
-                finish[i] = True
-                safe_seq.append(i)
-                found = True
-                break
-        if not found:
-            break
-    return all(finish), safe_seq
-
-
-# 页面渲染函数
-def welcome_page():
+# 欢迎页面
+def page_welcome():
     st.title("银行家算法模拟系统")
-    st.write("欢迎使用银行家算法模拟系统！")
-    st.write("本系统可以帮助您理解操作系统中资源分配的安全算法")
-    if st.button("开始模拟"):
-        st.session_state.page = 'config'
+    st.markdown("""
+    ## 欢迎使用银行家算法模拟系统！
+
+    **银行家算法**是操作系统中用于避免死锁的重要算法，本系统通过可视化方式帮助理解其工作原理。
+    """)
+
+    if st.button("随机模拟"):
+        st.session_state.page = "config"
+        st.rerun()
+
+    if st.button("手动输入"):
+        st.session_state.page = "page_input"
+        st.rerun()
 
 
-def config_page():
+# 配置页面
+def page_config():
     st.title("系统配置")
 
-    if 'n' not in st.session_state:
-        st.session_state.n = 3
-    if 'm' not in st.session_state:
-        st.session_state.m = 2
-    if 'lowestnum' not in st.session_state:
-        st.session_state.lowestnum = 3
+    if "current_step" not in st.session_state:
+        st.session_state.current_step = 0
 
-    with st.form("config_form"):
+    # 步骤1：输入基本参数
+    if st.session_state.current_step == 0:
+        with st.form("basic_params"):
+            cols = st.columns(3)
+            n = cols[0].number_input("进程数 (n)", 1, 10, 3)
+            m = cols[1].number_input("资源种类数 (m)", 1, 5, 2)
+            lowest = cols[2].number_input("最低资源数", 1, 5, 2)
+
+            if st.form_submit_button("确认"):
+                st.session_state.n = n
+                st.session_state.m = m
+                st.session_state.lowest = lowest
+                st.session_state.current_step = 1
+                st.rerun()
+
+    # 步骤2：生成系统资源
+    if st.session_state.current_step == 1:
+        max_resource = 20
+        sys_resource = [random.randint(0, max_resource) + st.session_state.lowest
+                        for _ in range(st.session_state.m)]
+
+        # 生成最大分配矩阵
+        max_alloc = []
+        for _ in range(st.session_state.n):
+            row = [random.randint(0, res) for res in sys_resource]
+            max_alloc.append(row)
+
+        # 生成已分配矩阵
+        alloc = []
+        for i in range(st.session_state.n):
+            row = [random.randint(0, max_alloc[i][j]) for j in range(st.session_state.m)]
+            alloc.append(row)
+
+        # 计算需求矩阵
+        need = []
+        for i in range(st.session_state.n):
+            row = [max_alloc[i][j] - alloc[i][j] for j in range(st.session_state.m)]
+            need.append(row)
+
+        # 生成请求列表
+        reqs = []
+        need_copy = deepcopy(need)
+        for i in range(st.session_state.n):
+            while sum(need_copy[i]) > 0:
+                req = []
+                for j in range(st.session_state.m):
+                    if need_copy[i][j] == 0:
+                        req.append(0)
+                    else:
+                        req.append(random.randint(1, need_copy[i][j]))
+                reqs.append((i, req))
+                for j in range(st.session_state.m):
+                    need_copy[i][j] -= req[j]
+
+        random.shuffle(reqs)
+        reqs += [(-1, [0] * st.session_state.m)] * 5  # 添加padding
+
+        # 保存到session
+        st.session_state.sys_resource = sys_resource
+        st.session_state.max_alloc = max_alloc
+        st.session_state.alloc = alloc
+        st.session_state.need = need
+        st.session_state.reqs = reqs
+        st.session_state.tick = 0
+        st.session_state.current_step = 2
+        st.rerun()
+
+    # 步骤3：显示配置结果
+    if st.session_state.current_step == 2:
+        st.success("系统初始化完成！")
+
+        # 显示资源分配
+        st.subheader("系统资源分配")
         cols = st.columns(3)
-        with cols[0]:
-            n = st.number_input("进程数量 (n)", 1, 10, st.session_state.n)
-        with cols[1]:
-            m = st.number_input("资源种类数 (m)", 1, 5, st.session_state.m)
-        with cols[2]:
-            lowestnum = st.number_input("每类资源最低数量", 1, 10, st.session_state.lowestnum)
+        cols[0].subheader("总资源")
+        cols[0].table(st.session_state.sys_resource)
+        cols[1].metric("最大分配矩阵", f"{st.session_state.max_alloc}")
+        cols[2].metric("已分配矩阵", f"{st.session_state.alloc}")
 
-        if st.form_submit_button("确认配置"):
-            st.session_state.n = n
-            st.session_state.m = m
-            st.session_state.lowestnum = lowestnum
+        # 显示请求序列
+        st.subheader("生成的请求序列")
+        req_df = pd.DataFrame(
+            [(i, req[0], req[1]) for i, req in enumerate(st.session_state.reqs)],
+            columns=["Tick", "进程ID", "请求资源"]
+        )
+        st.dataframe(req_df, height=300)
 
-            # 初始化系统资源
-            maxresource = 20
-            sysresource = initsysresource(m, maxresource, lowestnum)
-            maxalloc = initmaxalloc(n, m, sysresource)
-            alloc = initalloc(n, m, maxalloc)
-            need = calneed(maxalloc, alloc)
-            reqs = initreqs(n, m, need)
-            available = refreshavailable(n, m, sysresource, alloc)
+        # 操作按钮
+        c1, c2 = st.columns(2)
+        if c1.button("✅ 确认配置"):
+            st.session_state.page = "view"
+            st.rerun()
+        if c2.button("🔄 重新生成"):
+            st.session_state.current_step = 0
+            st.rerun()
 
-            # 保存到session state
-            st.session_state.sysresource = sysresource
-            st.session_state.maxalloc = maxalloc
-            st.session_state.alloc = alloc
-            st.session_state.need = need
-            st.session_state.reqs = reqs
-            st.session_state.available = available
-            st.session_state.tick = 0
-            st.session_state.current_step = 1
+# 配置页面
+def page_input():
+    st.title("手动输入")
 
-    if st.session_state.current_step >= 1:
-        st.subheader("系统配置结果")
-        cols = st.columns(2)
-        with cols[0]:
-            st.write("### 资源总量")
-            st.write(st.session_state.sysresource)
+    if "current_step" not in st.session_state:
+        st.session_state.current_step = 0
 
-            st.write("### 最大分配矩阵")
-            st.dataframe(st.session_state.maxalloc)
+    # 步骤1：输入基本参数
+    if st.session_state.current_step == 0:
+        with st.form("basic_params"):
+            cols = st.columns(3)
+            n = cols[0].number_input("进程数 (n)", 1, 10, 3)
+            m = cols[1].number_input("资源种类数 (m)", 1, 5, 2)
+            lowest = cols[2].number_input("最低资源数", 1, 5, 2)
 
-            st.write("### 已分配矩阵")
-            st.dataframe(st.session_state.alloc)
+            if st.form_submit_button("确认"):
+                st.session_state.n = n
+                st.session_state.m = m
+                st.session_state.lowest = lowest
+                st.session_state.current_step = 1
+                st.rerun()
 
-        with cols[1]:
-            st.write("### 需求矩阵")
-            st.dataframe(st.session_state.need)
+    # 步骤2：生成系统资源
+    if st.session_state.current_step == 1:
+        max_resource = 20
+        sys_resource = [random.randint(0, max_resource) + st.session_state.lowest
+                        for _ in range(st.session_state.m)]
 
-            st.write("### 可用资源")
-            st.write(st.session_state.available)
+        # 生成最大分配矩阵
+        max_alloc = []
+        for _ in range(st.session_state.n):
+            row = [random.randint(0, res) for res in sys_resource]
+            max_alloc.append(row)
 
-            st.write("### 请求序列（前10个）")
-            st.table(st.session_state.reqs[:10])
+        # 生成已分配矩阵
+        alloc = []
+        for i in range(st.session_state.n):
+            row = [random.randint(0, max_alloc[i][j]) for j in range(st.session_state.m)]
+            alloc.append(row)
 
-        if st.button("确认进入模拟"):
-            st.session_state.page = 'simulator'
+        # 计算需求矩阵
+        need = []
+        for i in range(st.session_state.n):
+            row = [max_alloc[i][j] - alloc[i][j] for j in range(st.session_state.m)]
+            need.append(row)
+
+        # 生成请求列表
+        reqs = []
+        need_copy = deepcopy(need)
+        for i in range(st.session_state.n):
+            while sum(need_copy[i]) > 0:
+                req = []
+                for j in range(st.session_state.m):
+                    if need_copy[i][j] == 0:
+                        req.append(0)
+                    else:
+                        req.append(random.randint(1, need_copy[i][j]))
+                reqs.append((i, req))
+                for j in range(st.session_state.m):
+                    need_copy[i][j] -= req[j]
+
+        random.shuffle(reqs)
+        reqs += [(-1, [0] * st.session_state.m)] * 5  # 添加padding
+
+        # 保存到session
+        st.session_state.sys_resource = sys_resource
+        st.session_state.max_alloc = max_alloc
+        st.session_state.alloc = alloc
+        st.session_state.need = need
+        st.session_state.reqs = reqs
+        st.session_state.tick = 0
+        st.session_state.current_step = 2
+        st.rerun()
+
+    # 步骤3：显示配置结果
+    if st.session_state.current_step == 2:
+        st.success("系统初始化完成！")
+
+        # 显示资源分配
+        st.subheader("系统资源分配")
+        cols = st.columns(3)
+        cols[0].subheader("总资源")
+        cols[0].table(st.session_state.sys_resource)
+        cols[1].metric("最大分配矩阵", f"{st.session_state.max_alloc}")
+        cols[2].metric("已分配矩阵", f"{st.session_state.alloc}")
+
+        # 显示请求序列
+        st.subheader("生成的请求序列")
+        req_df = pd.DataFrame(
+            [(i, req[0], req[1]) for i, req in enumerate(st.session_state.reqs)],
+            columns=["Tick", "进程ID", "请求资源"]
+        )
+        st.dataframe(req_df, height=300)
+
+        # 操作按钮
+        c1, c2 = st.columns(2)
+        if c1.button("✅ 确认配置"):
+            st.session_state.page = "view"
+            st.rerun()
+        if c2.button("🔄 重新生成"):
+            st.session_state.current_step = 0
+            st.rerun()
 
 
-def simulator_page():
-    st.title("模拟运行")
-    tick = st.session_state.tick
+# 审查页面
+def page_view():
+    st.title("系统状态审查")
 
-    # 显示当前状态
-    cols = st.columns([2, 1])
-    with cols[0]:
-        st.write("### 当前时钟刻:", tick)
-        st.write("### 当前请求:")
-        if tick < len(st.session_state.reqs):
-            req = st.session_state.reqs[tick]
-            st.write(f"进程 {req[0]} 请求资源: {req[1]}")
+    # 显示基本信息
+    cols = st.columns(3)
+    cols[0].metric("进程数", st.session_state.n)
+    cols[1].metric("资源种类数", st.session_state.m)
+    cols[2].metric("当前Tick", st.session_state.tick)
 
     # 显示矩阵
-    with cols[1]:
-        st.write("### 可用资源")
-        st.write(st.session_state.available)
+    st.subheader("资源分配矩阵")
+    col1, col2, col3 = st.columns(3)
 
-    st.write("### 资源分配状态")
-    cols = st.columns(3)
-    with cols[0]:
-        st.write("最大分配矩阵")
-        st.dataframe(st.session_state.maxalloc)
-    with cols[1]:
-        st.write("已分配矩阵")
-        st.dataframe(st.session_state.alloc)
-    with cols[2]:
-        st.write("需求矩阵")
-        st.dataframe(st.session_state.need)
-
-    # 安全检查
-    safe, seq = is_safe(st.session_state.available,
-                        st.session_state.need,
-                        st.session_state.alloc)
-
-    st.write("### 安全状态检查")
-    if safe:
-        st.success(f"系统安全！安全序列: {seq}")
-    else:
-        st.error("系统不安全！")
-
-    # 控制按钮
-    col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
-        if st.button("计算下一个") and safe:
-            process_next()
+        st.write("最大分配矩阵")
+        st.dataframe(pd.DataFrame(
+            st.session_state.max_alloc,
+            columns=[f"R{i}" for i in range(st.session_state.m)],
+            index=[f"P{i}" for i in range(st.session_state.n)]
+        ))
+
     with col2:
-        if st.button("跳过请求"):
-            process_skip()
+        st.write("已分配矩阵")
+        st.dataframe(pd.DataFrame(
+            st.session_state.alloc,
+            columns=[f"R{i}" for i in range(st.session_state.m)],
+            index=[f"P{i}" for i in range(st.session_state.n)]
+        ))
+
     with col3:
-        if st.button("返回主页"):
-            st.session_state.page = 'Welcome'
+        st.write("需求矩阵")
+        st.dataframe(pd.DataFrame(
+            st.session_state.need,
+            columns=[f"R{i}" for i in range(st.session_state.m)],
+            index=[f"P{i}" for i in range(st.session_state.n)]
+        ))
+
+    # 操作按钮
+    c1, c2 = st.columns(2)
+    if c1.button("▶️ 开始模拟"):
+        st.session_state.page = "simulator"
+        st.rerun()
+    if c2.button("↩️ 返回配置"):
+        st.session_state.page = "config"
+        st.rerun()
+
+
+# 模拟页面
+def page_simulator():
+    st.title("算法模拟")
+
+    # 显示当前状态
+    cols = st.columns(4)
+    cols[0].metric("总资源", f"{st.session_state.sys_resource}")
+    cols[1].metric("可用资源", f"{calculate_available()}")
+    cols[2].metric("当前Tick", st.session_state.tick)
+    cols[3].metric("当前请求",
+                   f"进程{st.session_state.reqs[st.session_state.tick][0]} - {st.session_state.reqs[st.session_state.tick][1]}")
+
+    # 显示矩阵
+    st.subheader("当前资源分配状态")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.write("已分配矩阵")
+        st.dataframe(pd.DataFrame(
+            st.session_state.alloc,
+            columns=[f"R{i}" for i in range(st.session_state.m)],
+            index=[f"P{i}" for i in range(st.session_state.n)]
+        ))
+
+    with col2:
+        st.write("需求矩阵")
+        st.dataframe(pd.DataFrame(
+            st.session_state.need,
+            columns=[f"R{i}" for i in range(st.session_state.m)],
+            index=[f"P{i}" for i in range(st.session_state.n)]
+        ))
+
+    # 安全序列计算
+    st.subheader("安全序列分析")
+    safe_sequences = bankers_algorithm()
+
+    if safe_sequences:
+        st.success(f"找到 {len(safe_sequences)} 个安全序列")
+        for seq in safe_sequences:
+            st.code(" -> ".join([f"P{p}" for p in seq]))
+    else:
+        st.error("当前状态不安全！")
+
+    # 操作按钮
+    col1, col2, col3 = st.columns(3)
+    if col1.button("⏭️ 计算下一个"):
+        process_next()
+    if col2.button("⏩ 跳过"):
+        skip_request()
+    if col3.button("🏠 返回首页"):
+        st.session_state.page = "welcome"
+        st.rerun()
+
+
+def calculate_available():
+    alloc_sum = [sum(col) for col in zip(*st.session_state.alloc)]
+    return [st.session_state.sys_resource[i] - alloc_sum[i]
+            for i in range(st.session_state.m)]
+
+
+def bankers_algorithm():
+    available = calculate_available()
+    need = deepcopy(st.session_state.need)
+    alloc = deepcopy(st.session_state.alloc)
+    sequences = []
+
+    def dfs(seq, work, finish):
+        if len(seq) == st.session_state.n:
+            sequences.append(seq)
+            return
+
+        for i in range(st.session_state.n):
+            if not finish[i] and all(need[i][j] <= work[j] for j in range(st.session_state.m)):
+                new_work = [work[j] + alloc[i][j] for j in range(st.session_state.m)]
+                new_finish = finish.copy()
+                new_finish[i] = True
+                dfs(seq + [i], new_work, new_finish)
+
+    dfs([], available, [False] * st.session_state.n)
+    return sequences
 
 
 def process_next():
-    tick = st.session_state.tick
-    req = st.session_state.reqs[tick]
-    pid = req[0]
-    request = req[1]
+    if st.session_state.tick >= len(st.session_state.reqs):
+        return
 
-    # 模拟分配
-    alloc = st.session_state.alloc
-    need = st.session_state.need
+    pid, req = st.session_state.reqs[st.session_state.tick]
+    available = calculate_available()
 
     # 检查请求是否合法
-    if all(request[j] <= need[pid][j] for j in range(len(request))):
-        # 尝试分配
-        for j in range(len(request)):
-            alloc[pid][j] += request[j]
-            need[pid][j] -= request[j]
-
-        # 检查是否需要释放资源
-        if all(n == 0 for n in need[pid]):
-            # 释放资源
-            for j in range(len(alloc[pid])):
-                st.session_state.available[j] += alloc[pid][j]
-                alloc[pid][j] = 0
-
+    if pid == -1 or all(r == 0 for r in req):
         st.session_state.tick += 1
+        return
 
+    # 尝试分配资源
+    if all(req[j] <= st.session_state.need[pid][j] for j in range(st.session_state.m)) and \
+            all(req[j] <= available[j] for j in range(st.session_state.m)):
 
-def process_skip():
+        # 预分配
+        for j in range(st.session_state.m):
+            st.session_state.alloc[pid][j] += req[j]
+            st.session_state.need[pid][j] -= req[j]
+            available[j] -= req[j]
+
+        # 检查是否完成
+        if all(n == 0 for n in st.session_state.need[pid]):
+            # 释放资源
+            for j in range(st.session_state.m):
+                available[j] += st.session_state.alloc[pid][j]
+                st.session_state.alloc[pid][j] = 0
+
     st.session_state.tick += 1
 
 
-# 主程序
-def main():
-    st.sidebar.title("导航")
-    page = st.sidebar.radio("选择页面",
-                            ["Welcome", "config", "simulator"],
-                            index=["Welcome", "config", "simulator"].index(st.session_state.page))
-
-    if page == "Welcome":
-        welcome_page()
-    elif page == "config":
-        config_page()
-    elif page == "simulator":
-        simulator_page()
+def skip_request():
+    st.session_state.tick += 1
 
 
 if __name__ == "__main__":
