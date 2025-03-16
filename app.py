@@ -24,7 +24,7 @@ def main():
     }
 
     with st.sidebar:
-        st.header("导航")
+        st.header("页面导航")
         if st.button("🏠 首页",use_container_width=True):
             st.session_state.page = "welcome"
         if "n" in st.session_state:
@@ -34,10 +34,13 @@ def main():
                 st.session_state.page = "input"
             if st.button("📋 示例", use_container_width=True):
                 st.session_state.page = "example"
-            if st.button("🔍 审查",use_container_width=True):
-                st.session_state.page = "view"
-            if st.button("▶️ 模拟",use_container_width=True):
-                st.session_state.page = "simulator"
+            st.header("🔍 审查")
+            st.header("️▶️ 模拟")
+
+            # if st.button("🔍 审查",use_container_width=True):
+            #     st.session_state.page = "view"
+            # if st.button("▶️ 模拟",use_container_width=True):
+            #     st.session_state.page = "simulator"
 
 
     pages[st.session_state.page]()
@@ -58,7 +61,7 @@ def page_welcome():
     st.session_state.safe_seq = 0
     #
     st.title("银行家算法模拟系统")
-    cols = st.columns(2)
+    cols = st.columns(3)
     if cols[0].button("随机模拟", use_container_width=True):
         st.session_state.page = "config"
         st.rerun()
@@ -66,6 +69,12 @@ def page_welcome():
     if cols[1].button("手动输入", use_container_width=True):
         st.session_state.page = "input"
         st.rerun()
+
+
+    if cols[2].button("示例", use_container_width=True):
+        st.session_state.page = "example"
+        st.rerun()
+
     intros = st.columns(2)
 
     intros[1].markdown("""
@@ -591,6 +600,8 @@ def page_input():
     elif st.session_state.current_step == 2:
         st.subheader("步骤3/3 - 确认配置")
 
+
+
         # 计算需求矩阵
         need = []
         for i in range(st.session_state.n):
@@ -616,8 +627,12 @@ def page_input():
                     need_copy[i][j] -= req[j]
 
         random.shuffle(reqs)
-        reqs += [(-1, [0] * st.session_state.m)] * 5
+        # reqs += [(-1, [0] * st.session_state.m)] * 5
 
+        # 计算初始可用资源
+        alloc_sum = [sum(col) for col in zip(*st.session_state.alloc)]
+        available = [st.session_state.sys_resource[i] - alloc_sum[i] for i in range(st.session_state.m)]
+        st.session_state.available=available
         # 保存数据
         st.session_state.need = need
         st.session_state.reqs = reqs
@@ -851,20 +866,21 @@ def page_simulator():
         ))
 
     with col4:
-        pid, req = st.session_state.reqs[st.session_state.tick]
-        reqd=deepcopy(st.session_state.sys_resource)
-        for i in range(st.session_state.m):
-            reqd[i]=req[i]
+        if any(st.session_state.reqs):
+            pid, req = st.session_state.reqs[st.session_state.tick]
+            reqd=deepcopy(st.session_state.sys_resource)
+            for i in range(st.session_state.m):
+                reqd[i]=req[i]
 
-        st.markdown(f"进程ID: {pid}请求资源")
-        sys_df = pd.DataFrame(
-            [reqd],
-            columns=[f"资源{i}" for i in range(st.session_state.m)],
-            index=["总量"]
-        )
-        st.dataframe(sys_df.style.map(
-            lambda x: 'color: blue' if x == min(reqd) else 'color: pink' if x == max(
-                reqd) else ''))
+            st.markdown(f"进程ID: {pid}请求资源")
+            sys_df = pd.DataFrame(
+                [reqd],
+                columns=[f"资源{i}" for i in range(st.session_state.m)],
+                index=["总量"]
+            )
+            st.dataframe(sys_df.style.map(
+                lambda x: 'color: blue' if x == min(reqd) else 'color: pink' if x == max(
+                    reqd) else ''))
 
 
     # 安全序列计算
