@@ -137,22 +137,67 @@ def page_config():
 
         # 显示资源分配
         st.subheader("系统资源分配")
+
+        # 系统资源和可用资源显示
         resources = st.columns(2)
-        resources[0].subheader("系统资源")
-        resources[0].table(
-            st.session_state.sys_resource
-        )
-        resources[1].subheader("可用资源")
-        resources[1].table(st.session_state.available)
+        with resources[0]:
+            st.markdown("**系统总资源**")
+            sys_df = pd.DataFrame(
+                [st.session_state.sys_resource],
+                columns=[f"资源{i}" for i in range(st.session_state.m)],
+                index=["总量"]
+            )
+            st.dataframe(sys_df.style.applymap(
+                lambda x: 'color: blue' if x == min(st.session_state.sys_resource) else 'color: pink' if x == max(
+                    st.session_state.sys_resource) else ''))
 
+        with resources[1]:
+            st.markdown("**可用资源**")
+            avail_df = pd.DataFrame(
+                [st.session_state.available],
+                columns=[f"资源{i}" for i in range(st.session_state.m)],
+                index=["可用量"]
+            )
+            st.dataframe(avail_df.style.applymap(
+                lambda x: 'color: blue' if x == min(st.session_state.available) else 'color: pink' if x == max(
+                    st.session_state.available) else ''))
+
+        # 矩阵显示
+        st.subheader("资源分配矩阵")
         cols = st.columns(3)
-        cols[0].subheader("总资源")
-        cols[0].table(st.session_state.sys_resource)
-        cols[1].subheader("MAX")
-        cols[1].table(st.session_state.max_alloc)
-        cols[2].subheader("ALLOC")
-        cols[2].table(st.session_state.alloc)
 
+        with cols[0]:
+            st.markdown("**最大分配矩阵 (MAX)**")
+            max_df = pd.DataFrame(
+                st.session_state.max_alloc,
+                columns=[f"资源{i}" for i in range(st.session_state.m)],
+                index=[f"进程{i}" for i in range(st.session_state.n)]
+            )
+            st.dataframe(max_df.style.applymap(lambda x: 'color: blue' if x == min(
+                map(min, st.session_state.max_alloc)) else 'color: pink' if x == max(
+                map(max, st.session_state.max_alloc)) else ''))
+
+        with cols[1]:
+            st.markdown("**已分配矩阵 (ALLOC)**")
+            alloc_df = pd.DataFrame(
+                st.session_state.alloc,
+                columns=[f"资源{i}" for i in range(st.session_state.m)],
+                index=[f"进程{i}" for i in range(st.session_state.n)]
+            )
+            st.dataframe(alloc_df.style.applymap(
+                lambda x: 'color: blue' if x == min(map(min, st.session_state.alloc)) else 'color: pink' if x == max(
+                    map(max, st.session_state.alloc)) else ''))
+
+        with cols[2]:
+            st.markdown("**需求矩阵 (NEED)**")
+            need_df = pd.DataFrame(
+                st.session_state.need,
+                columns=[f"资源{i}" for i in range(st.session_state.m)],
+                index=[f"进程{i}" for i in range(st.session_state.n)]
+            )
+            st.dataframe(need_df.style.applymap(
+                lambda x: 'color: blue' if x == min(map(min, st.session_state.need)) else 'color: pink' if x == max(
+                    map(max, st.session_state.need)) else ''))
 
         # 显示请求序列
         st.subheader("生成的请求序列")
@@ -160,16 +205,19 @@ def page_config():
             [(i, req[0], req[1]) for i, req in enumerate(st.session_state.reqs)],
             columns=["Tick", "进程ID", "请求资源"]
         )
-        st.dataframe(req_df, height=300)
+        st.dataframe(
+            req_df.style.apply(lambda x: ['background: lightblue' if x.name % 2 == 0 else '' for i in x], axis=1),
+            height=300)
 
         # 操作按钮
         c1, c2 = st.columns(2)
-        if c1.button("✅ 确认配置"):
+        if c1.button("✅ 确认配置", use_container_width=True):
             st.session_state.page = "view"
             st.rerun()
-        if c2.button("🔄 重新生成"):
+        if c2.button("🔄 重新生成", use_container_width=True):
             st.session_state.current_step = 0
             st.rerun()
+
 
 # 配置页面
 def page_input():
